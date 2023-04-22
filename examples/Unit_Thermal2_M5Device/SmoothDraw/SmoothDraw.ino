@@ -1,7 +1,11 @@
 
+#include <FastLED.h>
 #include <M5Unified.h>  // https://github.com/m5stack/M5Unified/
 
 #include <M5_Thermal2.h>
+
+#define NUM_LEDS 10
+CRGB leds[NUM_LEDS];
 
 M5_Thermal2 thermal2;
 
@@ -525,6 +529,28 @@ class image_ui_t : public ui_base_t {
                                                           : v]));
                     }
                 }
+            }
+
+            // Add M5GO Module support
+            static RGBColor color_last;
+            RGBColor color_current;
+
+            int16_t color_x = (_marker.mark_x - 1 > 0) ? _marker.mark_x - 1 : 1;
+            int16_t color_y = (_marker.mark_y - 1 > 0) ? _marker.mark_y - 1 : 1;
+
+            color_current = param->gfx->readPixelRGB(color_x, color_y);
+
+            if (color_last.r != color_current.r ||
+                color_last.g != color_current.g ||
+                color_last.b != color_current.b) {
+                color_last = color_current;
+
+                for (uint8_t l = 0; l <= 9; l++) {
+                    leds[l].setRGB(color_current.r, color_current.g,
+                                   color_current.b);
+                }
+                FastLED.setBrightness(16);
+                FastLED.show();
             }
 
             if (abs((y0 + y1) - (_marker.mark_y * 2)) < 20) {
@@ -1085,6 +1111,15 @@ void setup(void) {
         display.setRotation(display.getRotation() ^ 1);
     }
     display.print("M5_Thermal2 demo.\nPress the Thermal 2 reset button.");
+
+    // Init M5GO Module support
+    if (M5.getBoard() == m5::board_t::board_M5Stack) {
+        FastLED.addLeds<NEOPIXEL, 15>(leds,
+                                      NUM_LEDS);  // GRB ordering is assumed
+    } else if (M5.getBoard() == m5::board_t::board_M5StackCore2) {
+        FastLED.addLeds<NEOPIXEL, 25>(leds,
+                                      NUM_LEDS);  // GRB ordering is assumed
+    }
 
     M5.Ex_I2C.begin();
     delay(500);
